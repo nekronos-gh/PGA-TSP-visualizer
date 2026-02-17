@@ -77,7 +77,9 @@ export default function MapComponent({ points, onMapClick, onMarkerClick, path, 
             .then(setRoadPath)
             .catch(err => {
                 console.error('Failed to fetch route:', err);
-                setRoadPath([]);
+                // Just draw straight lines between the points
+                const fallback = waypointsWithLoop.map(p => [p.lat, p.lng] as [number, number]);
+                setRoadPath(fallback);
             })
             .finally(() => setIsLoading(false));
     }, [path, points]);
