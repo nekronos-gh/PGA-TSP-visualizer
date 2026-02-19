@@ -66,7 +66,7 @@ export default function StatsPanel({ iteration, bestDistance, distanceHistory, g
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-900/95 backdrop-blur-sm border-r border-slate-700 w-96 px-6 pb-6 pt-20 shadow-2xl overflow-hidden">
+        <div className="flex flex-col h-full bg-slate-900/95 backdrop-blur-sm border-r border-slate-700 w-96 px-6 pb-6 pt-20 shadow-2xl overflow-y-auto">
             
             <div className="mb-6 flex-none">
                 <h2 className="text-xs font-mono text-slate-500 mb-2 uppercase tracking-widest">Flight Metrics</h2>
@@ -82,15 +82,15 @@ export default function StatsPanel({ iteration, bestDistance, distanceHistory, g
                 </div>
             </div>
 
-            <div className="flex-grow flex flex-col gap-4 min-h-0">
-                <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-grow flex flex-col gap-4">
+                <div className="flex-1 min-h-[200px] flex flex-col">
                     <h3 className="text-xs font-bold text-slate-400 mb-2 uppercase">Convergence</h3>
                     <div className="flex-grow w-full bg-slate-800/20 rounded border border-slate-800 p-2 relative">
                         <Line options={commonOptions} data={distData} />
                     </div>
                 </div>
 
-                <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 min-h-[200px] flex flex-col">
                     <h3 className="text-xs font-bold text-slate-400 mb-2 uppercase">Goal Function</h3>
                     <div className="flex-grow w-full bg-slate-800/20 rounded border border-slate-800 p-2 relative">
                         <Line options={commonOptions} data={goalData} />
