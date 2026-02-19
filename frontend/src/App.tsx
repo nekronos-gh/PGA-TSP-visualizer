@@ -56,6 +56,12 @@ function App() {
     const handleRun = async () => {
         try {
             setStatus('starting');
+            // Check if server is reachable first
+            try {
+                await axios.get(`${API_URL}/`);
+            } catch (e) {
+               console.warn("Backend not reachable, but proceeding for UI demo");
+            }
             await axios.post(`${API_URL}/run`, { points });
             setStatus('running');
             setPolling(true);
@@ -130,43 +136,57 @@ function App() {
     }, [polling]);
 
     return (
-        <div className="flex h-screen flex-col bg-gray-100">
-            <header className="bg-blue-600 text-white p-4">
-                <h1 className="text-2xl font-bold">PGA-TSP Visualizer</h1>
+        <div className="relative h-screen w-screen overflow-hidden bg-slate-900 text-slate-200">
+            {/* Header Overlay */}
+            <header className="absolute top-0 left-0 w-full z-20 bg-slate-900/80 backdrop-blur-md border-b border-slate-700 px-6 py-4 flex justify-between items-center pointer-events-none">
+                <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse shadow-[0_0_10px_#0ea5e9]"></div>
+                    <h1 className="text-xl font-mono tracking-widest text-primary-400 font-bold">DRONE LOGISTICS</h1>
+                </div>
+                <div className="text-xs font-mono text-slate-500">
+                    SYS.STATUS: {status.toUpperCase()}
+                </div>
             </header>
             
-            <main className="flex-grow flex p-4 gap-4 overflow-hidden">
-                <div className="w-1/3 flex flex-col gap-4 overflow-y-auto">
-                    <ControlPanel 
-                        mode={mode} 
-                        setMode={setMode} 
-                        pointsCount={points.length} 
-                        status={status}
-                        onRun={handleRun}
-                        onReset={handleReset}
-                    />
-                    
+            {/* Fullscreen Map Layer */}
+            <div className="absolute inset-0 z-0">
+               <MapComponent 
+                   points={points} 
+                   onMapClick={handleMapClick} 
+                   onMarkerClick={handleMarkerClick} 
+                   path={state.best_path}
+                   mode={mode}
+               />
+            </div>
+
+            {/* Floating Dashboard Layer */}
+            <div className="absolute inset-0 z-10 pointer-events-none flex">
+                {/* Stats Panel (Left Sidebar) */}
+                <div className="h-full pointer-events-auto flex-none">
                     <StatsPanel 
                         iteration={state.iteration_number}
                         bestDistance={state.best_distance}
-                        operationType={state.iteration_number % 2 === 0 ? "Mutation" : "Crossover"} 
-                        goalValue={state.goal_history.length > 0 ? state.goal_history[state.goal_history.length - 1].goal : 0}
                         distanceHistory={state.distance_history}
                         goalHistory={state.goal_history}
                         heatmap={state.population_heatmap}
                     />
                 </div>
-                
-                <div className="w-2/3 bg-white rounded shadow p-1 relative z-0">
-                   <MapComponent 
-                       points={points} 
-                       onMapClick={handleMapClick} 
-                       onMarkerClick={handleMarkerClick} 
-                       path={state.best_path}
-                       mode={mode}
-                   />
+
+                {/* Right Area Overlaying Map */}
+                <div className="relative flex-grow h-full">
+                    {/* Control Panel (Bottom Center of Map Area) */}
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto">
+                        <ControlPanel 
+                            mode={mode} 
+                            setMode={setMode} 
+                            pointsCount={points.length} 
+                            status={status}
+                            onRun={handleRun}
+                            onReset={handleReset}
+                        />
+                    </div>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }

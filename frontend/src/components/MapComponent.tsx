@@ -3,18 +3,33 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useState, useEffect } from 'react';
 
-// Fix for default marker icon
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+// Custom Tactical Icons
+const DepotIcon = L.divIcon({
+    className: 'custom-div-icon',
+    html: `<div style="
+        background-color: #0ea5e9;
+        width: 16px;
+        height: 16px;
+        border-radius: 2px;
+        box-shadow: 0 0 10px #38bdf8;
+        border: 2px solid white;
+    "></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
 });
 
-L.Marker.prototype.options.icon = DefaultIcon;
+const TargetIcon = L.divIcon({
+    className: 'custom-div-icon',
+    html: `<div style="
+        background-color: #1e293b;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid #38bdf8;
+    "></div>`,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+});
 
 interface Point {
     id: number;
@@ -41,85 +56,72 @@ function LocationMarker({ onMapClick, mode }: { onMapClick: (lat: number, lng: n
     return null;
 }
 
-async function fetchRoute(waypoints: Point[]): Promise<[number, number][]> {
-    const coords = waypoints.map(p => `${p.lng},${p.lat}`).join(';');
-    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
-
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (!data.routes || data.routes.length === 0) return [];
-
-    return data.routes[0].geometry.coordinates.map(
-        ([lng, lat]: [number, number]) => [lat, lng]
-    );
-}
-
 export default function MapComponent({ points, onMapClick, onMarkerClick, path, mode }: MapComponentProps) {
-    const [roadPath, setRoadPath] = useState<[number, number][]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [flightPath, setFlightPath] = useState<[number, number][]>([]);
 
     useEffect(() => {
-        // Need at least 2 points to draw a route
         if (path.length < 2) {
-            setRoadPath([]);
+            setFlightPath([]);
             return;
         }
 
         const waypoints = path.map(idx => points[idx]).filter(Boolean);
         if (waypoints.length < 2) return;
 
-        // Add first point at the end to close the loop
+        // Close loop
         const waypointsWithLoop = [...waypoints, waypoints[0]];
-
-        setIsLoading(true);
-        fetchRoute(waypointsWithLoop)
-            .then(setRoadPath)
-            .catch(err => {
-                console.error('Failed to fetch route:', err);
-                // Just draw straight lines between the points
-                const fallback = waypointsWithLoop.map(p => [p.lat, p.lng] as [number, number]);
-                setRoadPath(fallback);
-            })
-            .finally(() => setIsLoading(false));
+        
+        // Direct flight paths (Straight Lines)
+        setFlightPath(waypointsWithLoop.map(p => [p.lat, p.lng]));
+        
     }, [path, points]);
 
     return (
-        <div className="h-full w-full relative">
-            {isLoading && (
-                <div style={{
-                    position: 'absolute',
-                    top: 10,
-                    right: 10,
-                    zIndex: 1000,
-                    background: 'white',
-                    padding: '4px 10px',
-                    borderRadius: 6,
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-                    fontSize: 13
-                }}>
-                    Calculating route...
-                </div>
-            )}
-            <MapContainer center={[52.52, 13.405]} zoom={13} scrollWheelZoom={true} className="h-full w-full">
+        <div className="h-full w-full bg-slate-900">
+            <MapContainer 
+                center={[52.52, 13.405]} 
+                zoom={13} 
+                scrollWheelZoom={true} 
+                className="h-full w-full z-0"
+                zoomControl={false} // Cleaner look
+            >
+                {/* CartoDB Dark Matter Tiles */}
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 />
+                
                 <LocationMarker onMapClick={onMapClick} mode={mode} />
+                
                 {points.map((p, idx) => (
                     <Marker
                         key={p.id}
                         position={[p.lat, p.lng]}
+                        icon={idx === 0 ? DepotIcon : TargetIcon}
                         eventHandlers={{
                             click: () => onMarkerClick(p.id),
                         }}
                     >
-                        <Popup>Point {idx + 1}</Popup>
+                        <Popup className="custom-popup">
+                            <div className="font-mono text-xs">
+                                <strong>{idx === 0 ? "DEPOT" : `TARGET-${p.id}`}</strong><br/>
+                                {p.lat.toFixed(4)}, {p.lng.toFixed(4)}
+                            </div>
+                        </Popup>
                     </Marker>
                 ))}
-                {roadPath.length > 0 && (
-                    <Polyline positions={roadPath} color="blue" weight={4} opacity={0.7} />
+                
+                {flightPath.length > 0 && (
+                    <Polyline 
+                        positions={flightPath} 
+                        pathOptions={{ 
+                            color: '#38bdf8', // primary-400
+                            weight: 2, 
+                            opacity: 0.8,
+                            dashArray: '5, 10',
+                            lineCap: 'round'
+                        }} 
+                    />
                 )}
             </MapContainer>
         </div>
