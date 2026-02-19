@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useState, useEffect } from 'react';
@@ -56,6 +56,24 @@ function LocationMarker({ onMapClick, mode }: { onMapClick: (lat: number, lng: n
     return null;
 }
 
+function RecenterAutomatically({ points, mode }: { points: Point[]; mode: 'custom' | 'preset' }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (mode === 'preset' && points.length > 0) {
+            const latLngs = points.map(p => [p.lat, p.lng] as [number, number]);
+            const bounds = L.latLngBounds(latLngs);
+            if (latLngs.length === 1) {
+                map.flyTo(latLngs[0], 13);
+            } else {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            }
+        }
+    }, [points, mode, map]);
+
+    return null;
+}
+
 export default function MapComponent({ points, onMapClick, onMarkerClick, path, mode }: MapComponentProps) {
     const [flightPath, setFlightPath] = useState<[number, number][]>([]);
 
@@ -92,6 +110,7 @@ export default function MapComponent({ points, onMapClick, onMarkerClick, path, 
                 />
                 
                 <LocationMarker onMapClick={onMapClick} mode={mode} />
+                <RecenterAutomatically points={points} mode={mode} />
                 
                 {points.map((p, idx) => (
                     <Marker
