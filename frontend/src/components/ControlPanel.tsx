@@ -7,9 +7,22 @@ interface ControlPanelProps {
     status: string;
     onRun: () => void;
     onReset: () => void;
+    presets: string[];
+    selectedPreset: string;
+    onPresetChange: (preset: string) => void;
 }
 
-export default function ControlPanel({ mode, setMode, pointsCount, status, onRun, onReset }: ControlPanelProps) {
+export default function ControlPanel({ 
+    mode, 
+    setMode, 
+    pointsCount, 
+    status, 
+    onRun, 
+    onReset,
+    presets,
+    selectedPreset,
+    onPresetChange
+}: ControlPanelProps) {
     const isRunning = status === 'running' || status === 'starting';
 
     return (
@@ -28,18 +41,36 @@ export default function ControlPanel({ mode, setMode, pointsCount, status, onRun
                     <MousePointer size={14} />
                     MANUAL
                 </button>
-                <button 
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                
+                <div className={`flex items-center relative transition-all ${
                         mode === 'preset' 
-                        ? 'bg-slate-700 text-primary-400 shadow-sm' 
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                    onClick={() => setMode('preset')}
-                    disabled={isRunning}
-                >
-                    <Map size={14} />
-                    BERLIN_SIM
-                </button>
+                        ? 'bg-slate-700 text-primary-400 shadow-sm rounded-full pr-2' 
+                        : 'text-slate-400 hover:text-slate-200 pl-2'
+                    }`}>
+                    <button 
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap`}
+                        onClick={() => setMode('preset')}
+                        disabled={isRunning}
+                    >
+                        <Map size={14} />
+                        PRESETS
+                    </button>
+                    
+                    {mode === 'preset' && (
+                        <select 
+                            className="bg-slate-800 text-slate-200 text-xs py-1 px-2 rounded border border-slate-600 focus:outline-none focus:border-primary-500 mr-1 max-w-[120px]"
+                            value={selectedPreset}
+                            onChange={(e) => onPresetChange(e.target.value)}
+                            disabled={isRunning}
+                        >
+                            {presets.map(preset => (
+                                <option key={preset} value={preset}>
+                                    {preset.toUpperCase()}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                </div>
             </div>
 
             <div className="h-8 w-px bg-slate-700 mx-2"></div>

@@ -23,9 +23,23 @@ interface StateData {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Load presets automatically from the presets folder
+const presetModules = import.meta.glob('./presets/*.json', { eager: true });
+const availablePresets: Record<string, Point[]> = {};
+
+Object.entries(presetModules).forEach(([path, module]) => {
+    // Extract filename as the preset name (e.g., "berlin" from "./presets/berlin.json")
+    const name = path.split('/').pop()?.replace('.json', '');
+    if (name) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        availablePresets[name] = (module as any).default || module;
+    }
+});
+
 function App() {
     const [points, setPoints] = useState<Point[]>([]);
     const [mode, setMode] = useState<'custom' | 'preset'>('custom');
+    const [selectedPreset, setSelectedPreset] = useState<string>(Object.keys(availablePresets)[0] || '');
     const [status, setStatus] = useState<string>('idle');
     const [state, setState] = useState<StateData>({
         status: 'idle',
@@ -90,28 +104,21 @@ function App() {
         }
     };
 
-    const loadPreset = () => {
-        // Berlin Coffeehouses (simplified)
-        const berlinPoints = [
-            { id: 1, lat: 52.5200, lng: 13.4050 },
-            { id: 2, lat: 52.5100, lng: 13.3800 },
-            { id: 3, lat: 52.5300, lng: 13.4200 },
-            { id: 4, lat: 52.5400, lng: 13.3900 },
-            { id: 5, lat: 52.5000, lng: 13.4100 },
-            { id: 6, lat: 52.5250, lng: 13.3700 },
-            { id: 7, lat: 52.5150, lng: 13.4300 },
-        ];
-        setPoints(berlinPoints);
-        setMode('preset');
+    const loadPreset = (presetName: string) => {
+        const presetPoints = availablePresets[presetName];
+        if (presetPoints) {
+            setPoints(presetPoints);
+            // Mode is already 'preset' if triggered by useEffect or setMode
+        }
     };
 
     useEffect(() => {
         if (mode === 'preset') {
-            loadPreset();
+            loadPreset(selectedPreset);
         } else if (mode === 'custom') {
             setPoints([]);
         }
-    }, [mode]);
+    }, [mode, selectedPreset]);
 
     useEffect(() => {
         if (polling) {
@@ -183,6 +190,9 @@ function App() {
                             status={status}
                             onRun={handleRun}
                             onReset={handleReset}
+                            presets={Object.keys(availablePresets)}
+                            selectedPreset={selectedPreset}
+                            onPresetChange={setSelectedPreset}
                         />
                     </div>
                 </div>
