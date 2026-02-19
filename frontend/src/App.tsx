@@ -36,20 +36,22 @@ Object.entries(presetModules).forEach(([path, module]) => {
     }
 });
 
+const INITIAL_STATE: StateData = {
+    status: 'idle',
+    iteration_number: 0,
+    best_distance: 0,
+    best_path: [],
+    distance_history: [],
+    goal_history: [],
+    population_heatmap: []
+};
+
 function App() {
     const [points, setPoints] = useState<Point[]>([]);
     const [mode, setMode] = useState<'custom' | 'preset'>('custom');
     const [selectedPreset, setSelectedPreset] = useState<string>(Object.keys(availablePresets)[0] || '');
     const [status, setStatus] = useState<string>('idle');
-    const [state, setState] = useState<StateData>({
-        status: 'idle',
-        iteration_number: 0,
-        best_distance: 0,
-        best_path: [],
-        distance_history: [],
-        goal_history: [],
-        population_heatmap: []
-    });
+    const [state, setState] = useState<StateData>(INITIAL_STATE);
 
     const [polling, setPolling] = useState<boolean>(false);
     const intervalRef = useRef<number | null>(null);
@@ -90,15 +92,7 @@ function App() {
         setMode('custom');
         setStatus('idle');
         setPolling(false);
-        setState({
-            status: 'idle',
-            iteration_number: 0,
-            best_distance: 0,
-            best_path: [],
-            distance_history: [],
-            goal_history: [],
-            population_heatmap: []
-        });
+        setState(INITIAL_STATE);
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
         }
@@ -113,6 +107,12 @@ function App() {
     };
 
     useEffect(() => {
+        // Reset state when changing mode or preset
+        setState(INITIAL_STATE);
+        setStatus('idle');
+        setPolling(false);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+
         if (mode === 'preset') {
             loadPreset(selectedPreset);
         } else if (mode === 'custom') {
