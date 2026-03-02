@@ -1,12 +1,21 @@
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/Dockerfile
     ports:
       - "8000:8000"
     environment:
-      - SOLVER_PATH=python3 mock_solver.py
+      - SOLVER_OUTPUT_DIR=${SOLVER_OUTPUT_DIR:-solver_output}
+      - SOLVER_INPUT_DIR=${SOLVER_OUTPUT_DIR:-tsp_input}
+      - VEGA_USER=${VEGA_USER:-}
+      - VEGA_HOST=${VEGA_HOST:-login.vega.izum.si}
+      - VEGA_PORT=${VEGA_PORT:-22}
+      - VEGA_SSH_KEY=${VEGA_SSH_KEY:-/root/.ssh/id_rsa}
+      - VEGA_REMOTE_DIR=${VEGA_REMOTE_DIR:-~/pga-tsp-workspace}
+    volumes:
+      - ~/.ssh:/root/.ssh:ro
+      - /tmp/ssh-ctl-vega:/tmp/ssh-ctl-vega  # Share life socket with vega
 
   frontend:
     build:
