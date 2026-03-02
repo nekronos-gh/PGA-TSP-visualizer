@@ -16,5 +16,4 @@ class StateResponse(BaseModel):
     best_distance: float
     best_path: List[int]
     distance_history: List[Dict]
-    goal_history: List[Dict]
     population_heatmap: List[Dict]

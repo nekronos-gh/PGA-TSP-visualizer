@@ -34,8 +34,9 @@ class StaticSolver(BaseSolver):
                 print(f"Error copying {f}: {e}")
             time.sleep(self.delay)
             
-        if not self._stop_event.is_set():
-            self.status = "complete"
+        self.status = "complete"
+        self._stop_event.set()
+
 
     def stop(self) -> None:
         self._stop_event.set()

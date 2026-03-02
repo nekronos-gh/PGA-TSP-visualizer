@@ -27,7 +27,6 @@ def run_solver_background(request: RunRequest):
 async def start_run(request: RunRequest, background_tasks: BackgroundTasks):
     if len(request.points) < 3:
         raise HTTPException(status_code=400, detail="At least 3 points required")
-
     background_tasks.add_task(run_solver_background, request)
     return {"message": "Solver started"}
 

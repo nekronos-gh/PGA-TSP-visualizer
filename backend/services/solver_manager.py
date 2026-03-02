@@ -12,7 +12,6 @@ class SolverManager:
         
         self.iteration_history: List[int] = []
         self.distance_history: List[Dict] = []
-        self.goal_history: List[Dict] = []
         self.latest_heatmap: List[Dict] = []
         self.current_best_path: List[int] = []
         self.processed_files = set()
@@ -21,7 +20,6 @@ class SolverManager:
         self.solver.stop()
         self.iteration_history = []
         self.distance_history = []
-        self.goal_history = []
         self.latest_heatmap = []
         self.current_best_path = []
         self.processed_files = set()
@@ -79,7 +77,6 @@ class SolverManager:
             "best_distance": current_dist,
             "best_path": self.current_best_path,
             "distance_history": self.distance_history,
-            "goal_history": self.goal_history,
             "population_heatmap": self.latest_heatmap
         }
 
@@ -96,15 +93,33 @@ class SolverManager:
                 with open(fpath, 'r') as f:
                     data = json.load(f)
                     
-                iter_num = data.get('iteration_number', 0)
+                iter_num = data.get('iteration_number')
+                if iter_num is None:
+                    # fallback to monotonic counter if missing
+                    iter_num = len(self.distance_history) + 1
+
                 best_dist = data.get('best_distance', 0.0)
                 path_1based = data.get('best_path', [])
                 
                 self.distance_history.append({"iteration": iter_num, "distance": best_dist})
-                self.goal_history.append({"iteration": iter_num, "goal": data.get('goal_function_value', 0.0)})
                 
                 self.current_best_path = [i - 1 for i in path_1based]
-                self.latest_heatmap = data.get('population_heatmap', [])
+                
+                raw_heatmap = data.get('population_heatmap', [])
+                processed_heatmap = []
+                if raw_heatmap and isinstance(raw_heatmap[0], (int, float)):
+                    # Normalize numbers to [0, 1] range (assuming lower is better)
+                    max_val = max(raw_heatmap)
+                    min_val = min(raw_heatmap)
+                    range_val = max_val - min_val if max_val > min_val else 1
+                    
+                    for idx, val in enumerate(raw_heatmap):
+                        score = 1.0 - ((val - min_val) / range_val)
+                        processed_heatmap.append({"solution_id": idx, "score": score})
+                else:
+                    processed_heatmap = raw_heatmap
+                    
+                self.latest_heatmap = processed_heatmap
                 
                 self.processed_files.add(filename)
                 

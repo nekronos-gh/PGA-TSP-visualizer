@@ -30,104 +30,119 @@ export default function ControlPanel({
     const isRunning = status === 'running' || status === 'starting';
 
     return (
-        <div className="bg-slate-800/90 backdrop-blur-md rounded-full border border-slate-700 shadow-xl px-8 py-3 flex items-center gap-6">
-            {/* Mode Switcher */}
-            <div className="flex gap-2 bg-slate-900/50 p-1 rounded-full border border-slate-700/50">
-                <button 
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                        mode === 'custom' 
-                        ? 'bg-slate-700 text-primary-400 shadow-sm' 
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                    onClick={() => setMode('custom')}
-                    disabled={isRunning}
-                >
-                    <MousePointer size={14} />
-                    MANUAL
-                </button>
-                
-                <div className={`flex items-center relative transition-all ${
-                        mode === 'preset' 
-                        ? 'bg-slate-700 text-primary-400 shadow-sm rounded-full pr-2' 
-                        : 'text-slate-400 hover:text-slate-200 pl-2'
-                    }`}>
+        <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl border border-slate-700 shadow-xl p-4 flex flex-col gap-4 min-w-[420px]">
+            {/* Top Row: Configuration */}
+            <div className="flex items-center justify-between gap-4">
+                {/* Mode Switcher */}
+                <div className="flex gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-700/50">
                     <button 
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap`}
-                        onClick={() => setMode('preset')}
-                        disabled={isRunning}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            mode === 'custom' 
+                            ? 'bg-slate-700 text-primary-400 shadow-sm' 
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        onClick={() => setMode('custom')}
+                        disabled={isRunning || solverType === 'static'}
                     >
-                        <Map size={14} />
-                        PRESETS
+                        <MousePointer size={14} />
+                        MANUAL
                     </button>
                     
-                    {mode === 'preset' && (
-                        <select 
-                            className="bg-slate-800 text-slate-200 text-xs py-1 px-2 rounded border border-slate-600 focus:outline-none focus:border-primary-500 mr-1 max-w-[120px]"
-                            value={selectedPreset}
-                            onChange={(e) => onPresetChange(e.target.value)}
+                    <div className={`flex items-center relative transition-all ${
+                            mode === 'preset' 
+                            ? 'bg-slate-700 text-primary-400 shadow-sm rounded-full pr-1' 
+                            : 'text-slate-400 hover:text-slate-200 pl-2'
+                        }`}>
+                        <button 
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap`}
+                            onClick={() => setMode('preset')}
                             disabled={isRunning}
                         >
-                            {presets.map(preset => (
-                                <option key={preset} value={preset}>
-                                    {preset.toUpperCase()}
-                                </option>
-                            ))}
-                        </select>
-                    )}
+                            <Map size={14} />
+                            PRESETS
+                        </button>
+                        
+                        {mode === 'preset' && (
+                            <select 
+                                className="bg-slate-800 text-slate-200 text-xs py-1 px-1.5 rounded border border-slate-600 focus:outline-none focus:border-primary-500 mr-1 max-w-[100px]"
+                                value={selectedPreset}
+                                onChange={(e) => onPresetChange(e.target.value)}
+                                disabled={isRunning}
+                            >
+                                {presets.map(preset => (
+                                    <option 
+                                        key={preset} 
+                                        value={preset}
+                                        disabled={solverType === 'static' && preset !== 'capitals'}
+                                    >
+                                        {preset.toUpperCase()}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                </div>
+
+                {/* Solver Switcher */}
+                <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-full border border-slate-700/50">
+                    <div className="flex items-center text-slate-400 pl-2">
+                        <Cpu size={14} />
+                    </div>
+                    <select 
+                        className="bg-transparent text-slate-200 text-xs py-1.5 px-2 focus:outline-none cursor-pointer"
+                        value={solverType}
+                        onChange={(e) => {
+                            const newType = e.target.value;
+                            onSolverTypeChange(newType);
+                            if (newType === 'static') {
+                                setMode('preset');
+                                if (presets.includes('capitals')) {
+                                    onPresetChange('capitals');
+                                }
+                            }
+                        }}
+                        disabled={isRunning}
+                    >
+                        <option value="static">Static</option>
+                        <option value="mock">Mock</option>
+                        <option value="hpc">HPC (VEGA)</option>
+                    </select>
                 </div>
             </div>
 
-            <div className="h-8 w-px bg-slate-700 mx-1"></div>
-
-            {/* Solver Switcher */}
-            <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-full border border-slate-700/50">
-                <div className="flex items-center text-slate-400 pl-3">
-                    <Cpu size={14} />
+            {/* Bottom Row: Actions & Status */}
+            <div className="flex items-center justify-between pt-1">
+                {/* Status Indicator */}
+                <div className="flex items-center gap-2 px-2">
+                    <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`}></div>
+                    <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">{status}</span>
                 </div>
-                <select 
-                    className="bg-transparent text-slate-200 text-sm py-1 px-2 focus:outline-none cursor-pointer"
-                    value={solverType}
-                    onChange={(e) => onSolverTypeChange(e.target.value)}
-                    disabled={isRunning}
-                >
-                    <option value="static">Static (Pre-generated)</option>
-                    <option value="mock">Mock Solver</option>
-                    <option value="hpc">HPC (VEGA)</option>
-                </select>
-            </div>
 
-            <div className="h-8 w-px bg-slate-700 mx-1"></div>
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3">
+                    <button 
+                        className="p-2 rounded-full bg-slate-700 hover:bg-red-500/20 hover:text-red-400 text-slate-400 transition-colors"
+                        onClick={onReset}
+                        title="Abort / Reset"
+                    >
+                        <RotateCcw size={16} />
+                    </button>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-4">
-                <button 
-                    className={`
-                        flex items-center gap-2 px-6 py-2 rounded-full font-bold tracking-wide transition-all shadow-lg
-                        ${pointsCount >= 3 && !isRunning
-                            ? 'bg-primary-600 hover:bg-primary-500 text-white shadow-primary-500/20 scale-100' 
-                            : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-50'
-                        }
-                    `}
-                    onClick={onRun}
-                    disabled={pointsCount < 3 || isRunning}
-                >
-                    <Play size={16} fill="currentColor" />
-                    {isRunning ? 'OPTIMIZING...' : 'LAUNCH'}
-                </button>
-
-                <button 
-                    className="p-2 rounded-full bg-slate-700 hover:bg-red-500/20 hover:text-red-400 text-slate-400 transition-colors"
-                    onClick={onReset}
-                    title="Abort / Reset"
-                >
-                    <RotateCcw size={20} />
-                </button>
-            </div>
-
-            {/* Status Indicator */}
-            <div className="flex items-center gap-2 border-l border-slate-700 pl-6">
-                <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`}></div>
-                <span className="text-xs font-mono text-slate-400 uppercase">{status}</span>
+                    <button 
+                        className={`
+                            flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm tracking-wide transition-all shadow-lg
+                            ${pointsCount >= 3 && !isRunning
+                                ? 'bg-primary-600 hover:bg-primary-500 text-white shadow-primary-500/20 scale-100' 
+                                : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-50'
+                            }
+                        `}
+                        onClick={onRun}
+                        disabled={pointsCount < 3 || isRunning}
+                    >
+                        <Play size={14} fill="currentColor" />
+                        {isRunning ? 'OPTIMIZING...' : 'LAUNCH'}
+                    </button>
+                </div>
             </div>
         </div>
     );

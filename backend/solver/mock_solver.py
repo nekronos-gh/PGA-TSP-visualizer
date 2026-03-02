@@ -42,7 +42,7 @@ def main():
     parser = argparse.ArgumentParser(description='Mock PGA-TSP Solver')
     parser.add_argument('--input', required=True, help='Path to input .tsp file')
     parser.add_argument('--output', required=True, help='Path to output directory')
-    parser.add_argument('--iterations', type=int, default=20, help='Number of iterations')
+    parser.add_argument('--iterations', type=int, default=60, help='Number of iterations')
     args = parser.parse_args()
 
     if not os.path.exists(args.output):
@@ -61,21 +61,36 @@ def main():
     print(f"Starting mock solver for {num_nodes} nodes over {args.iterations} iterations")
 
     for i in range(1, args.iterations + 1):
-        # Simulate improvement
-        if i % 2 == 0:
-            current_best_dist *= 0.95
-            # Just shuffle a bit for visual effect
-            idx1, idx2 = random.sample(range(num_nodes), 2)
-            current_best_path[idx1], current_best_path[idx2] = current_best_path[idx2], current_best_path[idx1]
-        
-        operation = "crossover" if i % 2 == 0 else "mutation"
-        
+        # Overall improvement tendency
+        trend_factor = 0.995  
+
+        # Normal small fluctuation
+        random_factor = random.uniform(0.98, 1.02)
+
+        current_best_dist *= trend_factor * random_factor
+
+        # Occasional strong improvement (breakthrough)
+        if random.random() < 0.12:
+            improvement = random.uniform(0.90, 0.96)
+            current_best_dist *= improvement
+
+        # Occasional worsening spike
+        if random.random() < 0.08:
+            spike = random.uniform(1.05, 1.15)
+            current_best_dist *= spike
+
+        # Shuffle path for visual movement
+        idx1, idx2 = random.sample(range(num_nodes), 2)
+        current_best_path[idx1], current_best_path[idx2] = current_best_path[idx2], current_best_path[idx1]
+
+        operation = random.choice(["crossover", "mutation"])
+
         # Fake heatmap data: list of {solution_id, score}
         heatmap = []
-        for j in range(20):
+        for j in range(1000):
             heatmap.append({
                 "solution_id": j,
-                "score": random.uniform(0.5, 1.0)
+                "score": random.uniform(0.0, 1.0)
             })
 
         iteration_data = {
@@ -83,7 +98,6 @@ def main():
             "best_distance": current_best_dist,
             "best_path": current_best_path,
             "operation_type": operation,
-            "goal_function_value": 10000 / current_best_dist, # Inverse of distance
             "population_heatmap": heatmap
         }
         

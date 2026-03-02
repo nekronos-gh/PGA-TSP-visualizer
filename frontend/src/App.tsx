@@ -17,7 +17,6 @@ interface StateData {
     best_distance: number;
     best_path: number[];
     distance_history: { iteration: number, distance: number }[];
-    goal_history: { iteration: number, goal: number }[];
     population_heatmap: { solution_id: number, score: number }[];
 }
 
@@ -42,7 +41,6 @@ const INITIAL_STATE: StateData = {
     best_distance: 0,
     best_path: [],
     distance_history: [],
-    goal_history: [],
     population_heatmap: []
 };
 
@@ -176,7 +174,6 @@ function App() {
                         iteration={state.iteration_number}
                         bestDistance={state.best_distance}
                         distanceHistory={state.distance_history}
-                        goalHistory={state.goal_history}
                         heatmap={state.population_heatmap}
                     />
                 </div>
