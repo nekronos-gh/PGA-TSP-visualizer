@@ -95,19 +95,19 @@ async def start_run(request: RunRequest, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=400, detail="At least 3 points required")
 
     # Reset state
-    if current_process and current_process.poll() is None:
-        current_process.terminate()
-        try:
-            current_process.wait(timeout=2)
-        except:
-            current_process.kill()
+    #if current_process and current_process.poll() is None:
+    #    current_process.terminate()
+    #    try:
+    #        current_process.wait(timeout=2)
+    #    except:
+    #        current_process.kill()
 
     # Clean output directory
-    for f in glob.glob(os.path.join(SOLVER_OUTPUT_DIR, "*")):
-        try:
-            os.remove(f)
-        except:
-            pass
+    #for f in glob.glob(os.path.join(SOLVER_OUTPUT_DIR, "*")):
+    #    try:
+    #        os.remove(f)
+    #    except:
+    #        pass
 
     iteration_history = []
     distance_history = []
@@ -117,27 +117,27 @@ async def start_run(request: RunRequest, background_tasks: BackgroundTasks):
     processed_files = set()
     current_status = "pending"
 
-    tsp_filepath = os.path.join(TSP_INPUT_DIR, "problem.tsp")
-    generate_tsp_file(request.points, tsp_filepath)
+    #tsp_filepath = os.path.join(TSP_INPUT_DIR, "problem.tsp")
+    #generate_tsp_file(request.points, tsp_filepath)
     
-    background_tasks.add_task(run_solver_background, tsp_filepath)
+    #background_tasks.add_task(run_solver_background, tsp_filepath)
     
     return {"message": "Solver started"}
 
 @app.get("/state") # , response_model=StateResponse
 async def get_state():
-    global current_status, iteration_history, distance_history, goal_history, latest_heatmap, current_process, processed_files, current_best_path
+    global current_status, iteration_history, distance_history, goal_history, latest_heatmap, current_process, processed_files, current_best_path, max_heat
 
     # Check process status
-    if current_process:
-        ret_code = current_process.poll()
-        if ret_code is not None:
-            if current_status == "running":
-                current_status = "complete"
-            current_process = None
-    elif current_status == "running":
-         # Should not happen unless process vanished
-         current_status = "complete"
+    #if current_process:
+    #    ret_code = current_process.poll()
+    #    if ret_code is not None:
+    #        if current_status == "running":
+    #            current_status = "complete"
+    #        current_process = None
+    #elif current_status == "running":
+    #     # Should not happen unless process vanished
+    #     current_status = "complete"
 
     # Read new files
     all_files = glob.glob(os.path.join(SOLVER_OUTPUT_DIR, "iteration_*.json"))
@@ -154,7 +154,7 @@ async def get_state():
             with open(fpath, 'r') as f:
                 data = json.load(f)
                 
-            iter_num = data.get('iteration_number', 0)
+            iter_num = data.get('migration_number', 0)
             best_dist = data.get('best_distance', 0.0)
             path_1based = data.get('best_path', [])
             
@@ -164,10 +164,14 @@ async def get_state():
             
             # Update latest state
             current_best_path = [i - 1 for i in path_1based]
-            latest_heatmap = data.get('population_heatmap', [])
+            if len(processed_files) == 0:
+                max_heat = max(data.get('population_heatmap', []));
+            latest_heatmap = [{"solution_id": 0, "score": h / max_heat} for h in data.get('population_heatmap', [])]
             
             processed_files.add(filename)
             updated = True
+
+            break
             
         except Exception as e:
             print(f"Error reading {filename}: {e}")
