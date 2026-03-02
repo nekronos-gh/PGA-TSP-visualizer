@@ -1,4 +1,4 @@
-import { Play, RotateCcw, Map, MousePointer } from 'lucide-react';
+import { Play, RotateCcw, Map, MousePointer, Cpu } from 'lucide-react';
 
 interface ControlPanelProps {
     mode: 'custom' | 'preset';
@@ -10,6 +10,8 @@ interface ControlPanelProps {
     presets: string[];
     selectedPreset: string;
     onPresetChange: (preset: string) => void;
+    solverType: string;
+    onSolverTypeChange: (solverType: string) => void;
 }
 
 export default function ControlPanel({ 
@@ -21,12 +23,14 @@ export default function ControlPanel({
     onReset,
     presets,
     selectedPreset,
-    onPresetChange
+    onPresetChange,
+    solverType,
+    onSolverTypeChange
 }: ControlPanelProps) {
     const isRunning = status === 'running' || status === 'starting';
 
     return (
-        <div className="bg-slate-800/90 backdrop-blur-md rounded-full border border-slate-700 shadow-xl px-8 py-3 flex items-center gap-8">
+        <div className="bg-slate-800/90 backdrop-blur-md rounded-full border border-slate-700 shadow-xl px-8 py-3 flex items-center gap-6">
             {/* Mode Switcher */}
             <div className="flex gap-2 bg-slate-900/50 p-1 rounded-full border border-slate-700/50">
                 <button 
@@ -73,7 +77,26 @@ export default function ControlPanel({
                 </div>
             </div>
 
-            <div className="h-8 w-px bg-slate-700 mx-2"></div>
+            <div className="h-8 w-px bg-slate-700 mx-1"></div>
+
+            {/* Solver Switcher */}
+            <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-full border border-slate-700/50">
+                <div className="flex items-center text-slate-400 pl-3">
+                    <Cpu size={14} />
+                </div>
+                <select 
+                    className="bg-transparent text-slate-200 text-sm py-1 px-2 focus:outline-none cursor-pointer"
+                    value={solverType}
+                    onChange={(e) => onSolverTypeChange(e.target.value)}
+                    disabled={isRunning}
+                >
+                    <option value="static">Static (Pre-generated)</option>
+                    <option value="mock">Mock Solver</option>
+                    <option value="hpc">HPC (VEGA)</option>
+                </select>
+            </div>
+
+            <div className="h-8 w-px bg-slate-700 mx-1"></div>
 
             {/* Action Buttons */}
             <div className="flex items-center gap-4">

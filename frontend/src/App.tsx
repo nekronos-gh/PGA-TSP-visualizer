@@ -52,6 +52,8 @@ function App() {
     const [selectedPreset, setSelectedPreset] = useState<string>(Object.keys(availablePresets)[0] || '');
     const [status, setStatus] = useState<string>('idle');
     const [state, setState] = useState<StateData>(INITIAL_STATE);
+    
+    const [solverType, setSolverType] = useState<string>('mock');
 
     const [polling, setPolling] = useState<boolean>(false);
     const intervalRef = useRef<number | null>(null);
@@ -78,7 +80,7 @@ function App() {
             } catch (e) {
                console.warn("Backend not reachable, but proceeding for UI demo");
             }
-            await axios.post(`${API_URL}/run`, { points });
+            await axios.post(`${API_URL}/run`, { points, solver_type: solverType });
             setStatus('running');
             setPolling(true);
         } catch (error) {
@@ -193,6 +195,8 @@ function App() {
                             presets={Object.keys(availablePresets)}
                             selectedPreset={selectedPreset}
                             onPresetChange={setSelectedPreset}
+                            solverType={solverType}
+                            onSolverTypeChange={setSolverType}
                         />
                     </div>
                 </div>
