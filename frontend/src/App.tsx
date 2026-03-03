@@ -150,9 +150,6 @@ function App() {
                     <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse shadow-[0_0_10px_#0ea5e9]"></div>
                     <h1 className="text-xl font-mono tracking-widest text-primary-400 font-bold">DRONE LOGISTICS</h1>
                 </div>
-                <div className="text-xs font-mono text-slate-500">
-                    SYS.STATUS: {status.toUpperCase()}
-                </div>
             </header>
             
             {/* Fullscreen Map Layer */}

@@ -73,7 +73,7 @@ export default function ControlPanel({
                                     <option 
                                         key={preset} 
                                         value={preset}
-                                        disabled={solverType === 'static' && preset !== 'capitals'}
+                                        disabled={solverType === 'static' && preset !== 'eu_capitals'}
                                     >
                                         {preset.toUpperCase()}
                                     </option>
@@ -96,8 +96,8 @@ export default function ControlPanel({
                             onSolverTypeChange(newType);
                             if (newType === 'static') {
                                 setMode('preset');
-                                if (presets.includes('capitals')) {
-                                    onPresetChange('capitals');
+                                if (presets.includes('eu_capitals')) {
+                                    onPresetChange('eu_capitals');
                                 }
                             }
                         }}
