@@ -23,13 +23,22 @@ app.add_middleware(
 def run_solver_background(request: RunRequest):
     solver_manager.start_run(request.points, solver_type=request.solver_type)
 
+@app.get("/")
+async def pong():
+    return { }
+
 @app.post("/run")
 async def start_run(request: RunRequest, background_tasks: BackgroundTasks):
     if len(request.points) < 3:
         raise HTTPException(status_code=400, detail="At least 3 points required")
+    solver_manager.reset_state()
     background_tasks.add_task(run_solver_background, request)
     return {"message": "Solver started"}
 
 @app.get("/state")
 async def get_state():
     return solver_manager.get_state()
+
+@app.post("/stop")
+async def stop():
+    solver_manager.reset_state()

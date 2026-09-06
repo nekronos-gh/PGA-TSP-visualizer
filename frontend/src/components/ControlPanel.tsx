@@ -27,7 +27,7 @@ export default function ControlPanel({
     solverType,
     onSolverTypeChange
 }: ControlPanelProps) {
-    const isRunning = status === 'running' || status === 'starting';
+    const isRunning = status === 'running' || status === 'starting' || status === 'pending' || status === 'stopping';
 
     return (
         <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl border border-slate-700 shadow-xl p-4 flex flex-col gap-4 min-w-[420px]">

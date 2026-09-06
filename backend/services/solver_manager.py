@@ -15,7 +15,9 @@ class SolverManager:
         self.latest_heatmap: List[Dict] = []
         self.current_best_path: List[int] = []
         self.processed_files = set()
-        
+        self.output_synced = False
+        self.all_files_processed = False
+
     def reset_state(self):
         self.solver.stop()
         self.iteration_history = []
@@ -23,6 +25,8 @@ class SolverManager:
         self.latest_heatmap = []
         self.current_best_path = []
         self.processed_files = set()
+        self.output_synced = False
+        self.all_files_processed = False
         
         # Clean output directory
         for f in glob.glob(os.path.join(settings.SOLVER_OUTPUT_DIR, "*")):
@@ -32,8 +36,6 @@ class SolverManager:
                 pass
 
     def start_run(self, points: List[Point], solver_type: str = "mock"):
-        self.reset_state()
-        
         # Re-initialize solver if requested type differs or just re-initialize every run to be safe
         if solver_type:
             self.solver = get_solver(solver_type)
@@ -56,13 +58,14 @@ class SolverManager:
 
     def get_state(self) -> Dict:
         status = self.solver.get_status()
-        
-        # Sync outputs if needed
-        if status in ["running", "complete"]:
+
+        if status == "complete" and not self.output_synced:
             self.solver.sync_output(settings.SOLVER_OUTPUT_DIR)
+            self.output_synced = True
             
         # Read new files
-        self._process_new_outputs()
+        if not self.all_files_processed:
+            self._process_new_outputs()
 
         current_iter = 0
         current_dist = 0.0
@@ -70,6 +73,9 @@ class SolverManager:
             last_entry = self.distance_history[-1]
             current_iter = last_entry['iteration']
             current_dist = last_entry['distance']
+
+        if self.all_files_processed:
+            status = "processed"
 
         return {
             "status": status,
@@ -83,7 +89,7 @@ class SolverManager:
     def _process_new_outputs(self):
         all_files = glob.glob(os.path.join(settings.SOLVER_OUTPUT_DIR, "iteration_*.json"))
         all_files.sort()
-        
+
         for fpath in all_files:
             filename = os.path.basename(fpath)
             if filename in self.processed_files:
@@ -94,6 +100,8 @@ class SolverManager:
                     data = json.load(f)
                     
                 iter_num = data.get('iteration_number')
+                if iter_num is None:
+                    iter_num = data.get('migration_number')
                 if iter_num is None:
                     # fallback to monotonic counter if missing
                     iter_num = len(self.distance_history) + 1
@@ -122,8 +130,13 @@ class SolverManager:
                 self.latest_heatmap = processed_heatmap
                 
                 self.processed_files.add(filename)
+
+                return # One file processed
                 
             except Exception as e:
                 print(f"Error reading {filename}: {e}")
+
+        if self.output_synced:
+            self.all_files_processed = True
 
 solver_manager = SolverManager()

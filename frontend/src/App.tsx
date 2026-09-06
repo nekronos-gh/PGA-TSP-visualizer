@@ -53,8 +53,7 @@ function App() {
     
     const [solverType, setSolverType] = useState<string>('mock');
 
-    const [polling, setPolling] = useState<boolean>(false);
-    const intervalRef = useRef<number | null>(null);
+    const pollingRef = useRef<boolean>(false);
 
     const handleMapClick = (lat: number, lng: number) => {
         if (mode === 'custom') {
@@ -80,22 +79,25 @@ function App() {
             }
             await axios.post(`${API_URL}/run`, { points, solver_type: solverType });
             setStatus('running');
-            setPolling(true);
+            pollingRef.current = true;
+            fetchState();
         } catch (error) {
             console.error('Error starting run:', error);
             setStatus('error');
         }
     };
 
-    const handleReset = () => {
-        setPoints([]);
-        setMode('custom');
-        setStatus('idle');
-        setPolling(false);
-        setState(INITIAL_STATE);
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
+    const handleReset = async () => {
+        if (mode === 'custom') {
+            setPoints([]);
         }
+        if (pollingRef.current) {
+            pollingRef.current = false;
+            setStatus('stopping');
+            await axios.post(`${API_URL}/stop`);
+            setStatus('idle');
+        }
+        setState(INITIAL_STATE);
     };
 
     const loadPreset = (presetName: string) => {
@@ -106,12 +108,29 @@ function App() {
         }
     };
 
+    const fetchState = async () => {
+        try {
+            while (pollingRef.current) {
+                const response = await axios.get<StateData>(`${API_URL}/state`);
+                setState(response.data);
+                setStatus(response.data.status);
+                if (response.data.status === 'processed' || response.data.status === 'error') {
+                    pollingRef.current = false;
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        } catch (error) {
+            console.error('Error fetching state:', error);
+            handleReset();
+        }
+    };
+
     useEffect(() => {
         // Reset state when changing mode or preset
         setState(INITIAL_STATE);
         setStatus('idle');
-        setPolling(false);
-        if (intervalRef.current) clearInterval(intervalRef.current);
+        pollingRef.current = false; 
 
         if (mode === 'preset') {
             loadPreset(selectedPreset);
@@ -119,28 +138,6 @@ function App() {
             setPoints([]);
         }
     }, [mode, selectedPreset]);
-
-    useEffect(() => {
-        if (polling) {
-            intervalRef.current = window.setInterval(async () => {
-                try {
-                    const response = await axios.get<StateData>(`${API_URL}/state`);
-                    setState(response.data);
-                    setStatus(response.data.status);
-                    
-                    if (response.data.status === 'complete' || response.data.status === 'error') {
-                        setPolling(false);
-                        if (intervalRef.current) clearInterval(intervalRef.current);
-                    }
-                } catch (error) {
-                    console.error('Error fetching state:', error);
-                }
-            }, 500);
-        }
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-        };
-    }, [polling]);
 
     return (
         <div className="relative h-screen w-screen overflow-hidden bg-slate-900 text-slate-200">

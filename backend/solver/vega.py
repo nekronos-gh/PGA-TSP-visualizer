@@ -65,6 +65,7 @@ class VegaSolver(BaseSolver):
         print(f"Executing SSH: {' '.join(ssh_cmd)}")
         result = subprocess.run(ssh_cmd, capture_output=True, text=True)
         if result.returncode != 0:
+            print(result.strerr)
             raise Exception(f"SSH command failed: {result.stderr}")
         return result.stdout.strip()
 
@@ -76,12 +77,12 @@ class VegaSolver(BaseSolver):
         if result.returncode != 0:
             raise Exception(f"SCP transfer failed: {result.stderr}")
 
-    def _run_scp_from_remote(self, remote_path: str, local_path: str):
-        scp_cmd = ["scp", *self._base_scp_opts(),
-                   f"{self.user}@{self.host}:{remote_path}", local_path]
-        result = subprocess.run(scp_cmd, capture_output=True, text=True)
-        if result.returncode != 0 and "No such file" not in result.stderr:
-            print(f"SCP Warning/Error: {result.stderr}")
+    def _run_rsync_from_remote(self, remote_path: str, local_path: str):
+        rsync_cmd = ["rsync", "-e", f"ssh -o 'ControlPath={self.control_path}'",
+                   "-r", f"{self.user}@{self.host}:{remote_path}", local_path]
+        result = subprocess.run(rsync_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"rsync Warning/Error: {result.stderr}")
 
     def start(self, tsp_filepath: str, output_dir: str) -> None:
         self.status = "starting"
@@ -106,7 +107,13 @@ class VegaSolver(BaseSolver):
                 print(f"Unexpected sbatch output: {submit_output}")
                 self.job_id = "unknown"
 
-            self.status = "running"
+            self.status = "pending"
+
+            while self.status in ['pending', 'running']:
+                self._run_rsync_from_remote(
+                    f"{self.remote_work_dir}/history/", f"{output_dir}/"
+                )
+                time.sleep(0.5)
 
         except Exception as e:
             print(f"Failed to start {self.cluster_name} job: {e}")
@@ -132,11 +139,13 @@ class VegaSolver(BaseSolver):
         self.status = "idle"
 
     def get_status(self) -> str:
-        if self.status == "running" and self.job_id:
+        if (self.status == "running" or self.status == "pending") and self.job_id:
             try:
                 out = self._run_ssh(f"squeue -j {self.job_id} -h -o %T")
                 if not out:
                     self.status = "complete"
+                elif out == 'RUNNING':
+                    self.status = "running"
             except Exception:
                 pass
         return self.status
@@ -144,8 +153,8 @@ class VegaSolver(BaseSolver):
     def sync_output(self, output_dir: str) -> None:
         if self.remote_work_dir:
             try:
-                self._run_scp_from_remote(
-                    f"{self.remote_work_dir}/history/*.json", f"{output_dir}/"
+                self._run_rsync_from_remote(
+                    f"{self.remote_work_dir}/history/", f"{output_dir}/"
                 )
             except Exception:
                 pass
