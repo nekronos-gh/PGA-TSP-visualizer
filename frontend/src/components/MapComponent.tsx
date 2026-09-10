@@ -3,6 +3,8 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useState, useEffect } from 'react';
 
+const CARTO_API_KEY = import.meta.env.VITE_CARTO_BASEMAPS_API_KEY;
+
 // Custom Tactical Icons
 const DepotIcon = L.divIcon({
     className: 'custom-div-icon',
@@ -106,7 +108,7 @@ export default function MapComponent({ points, onMapClick, onMarkerClick, path, 
                 {/* CartoDB Dark Matter Tiles */}
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    url={'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=' + CARTO_API_KEY}
                 />
                 
                 <LocationMarker onMapClick={onMapClick} mode={mode} />

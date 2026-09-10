@@ -3,6 +3,12 @@ FROM node:20-slim AS build
 
 WORKDIR /app
 
+ARG CARTO_BASEMAPS_API_KEY
+ENV VITE_CARTO_BASEMAPS_API_KEY $CARTO_BASEMAPS_API_KEY
+
+ARG API_URL
+ENV VITE_API_URL $API_URL
+
 # Install dependencies
 COPY package.json package-lock.json ./
 RUN npm ci

@@ -59,7 +59,7 @@ export default function StatsPanel({ iteration, bestDistance, distanceHistory, h
         {/* Flight Metrics — pinned top */}
         <div className="mb-6 flex-none">
         <h2 className="text-xs font-mono text-slate-500 mb-2 uppercase tracking-widest">Flight Metrics</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-[2fr_1fr] gap-4">
         <div className="bg-slate-800/50 p-3 rounded border border-slate-700">
         <div className="text-slate-400 text-xs mb-1">BEST DISTANCE</div>
         <div className="text-2xl font-mono text-primary-400 font-bold">{bestDistance.toFixed(1)}<span className="text-xs text-slate-500 ml-1">KM</span></div>

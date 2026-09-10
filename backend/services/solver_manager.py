@@ -39,6 +39,13 @@ class SolverManager:
         # Re-initialize solver if requested type differs or just re-initialize every run to be safe
         if solver_type:
             self.solver = get_solver(solver_type)
+
+        lat_min = min(map(lambda p: p.lat, points))
+        lat_max = max(map(lambda p: p.lat, points))
+        lng_min = min(map(lambda p: p.lng, points))
+        lng_max = max(map(lambda p: p.lng, points))
+
+        self.kilo_scale = solver_type == "mock" or lat_max - lat_min > 60.0 or lng_max - lng_min > 120.0
         
         tsp_filepath = os.path.join(settings.TSP_INPUT_DIR, "problem.tsp")
         self._generate_tsp_file(points, tsp_filepath)
@@ -50,7 +57,10 @@ class SolverManager:
             f.write("NAME: custom_tsp\n")
             f.write("TYPE: TSP\n")
             f.write(f"DIMENSION: {len(points)}\n")
-            f.write("EDGE_WEIGHT_TYPE: EUC_2D\n")
+            if self.kilo_scale:
+                f.write("EDGE_WEIGHT_TYPE: GEOM_KM\n")
+            else:
+                f.write("EDGE_WEIGHT_TYPE: GEOM\n")
             f.write("NODE_COORD_SECTION\n")
             for i, p in enumerate(points):
                 f.write(f"{i+1} {p.lat} {p.lng}\n")
@@ -107,6 +117,8 @@ class SolverManager:
                     iter_num = len(self.distance_history) + 1
 
                 best_dist = data.get('best_distance', 0.0)
+                if not self.kilo_scale:
+                    best_dist = best_dist / 1000.0
                 path_1based = data.get('best_path', [])
                 
                 self.distance_history.append({"iteration": iter_num, "distance": best_dist})
