@@ -1,8 +1,14 @@
 from abc import ABC, abstractmethod
+from backend.models.api import SolverParameters
 
 class BaseSolver(ABC):
     @abstractmethod
-    def start(self, tsp_filepath: str, output_dir: str) -> None:
+    def start(
+        self,
+        tsp_filepath: str,
+        output_dir: str,
+        parameters: SolverParameters | None = None,
+    ) -> None:
         """Starts the solver process."""
         pass
 

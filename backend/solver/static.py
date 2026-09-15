@@ -1,19 +1,31 @@
 import os
-import glob
-import time
 import shutil
 import threading
+import time
+from pathlib import Path
+
+from backend.models.api import SolverParameters
+
 from .base import BaseSolver
 
+
 class StaticSolver(BaseSolver):
-    def __init__(self, source_dir="backend/static_output", delay=1.0):
-        self.source_dir = source_dir
+    def __init__(self, source_dir=None, delay=1.0):
+        self.source_dir = Path(source_dir) if source_dir else (
+            Path(__file__).resolve().parent.parent / "static_output"
+        )
         self.delay = delay
         self.status = "idle"
         self._stop_event = threading.Event()
         self._thread = None
 
-    def start(self, tsp_filepath: str, output_dir: str, **kwargs) -> None:
+    def start(
+        self,
+        tsp_filepath: str,
+        output_dir: str,
+        parameters: SolverParameters | None = None,
+        **kwargs,
+    ) -> None:
         self.status = "starting"
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._run, args=(output_dir,))
@@ -21,22 +33,34 @@ class StaticSolver(BaseSolver):
 
     def _run(self, output_dir: str):
         self.status = "running"
-        files = sorted(glob.glob(os.path.join(self.source_dir, "iteration_*.json")))
-        
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        files = sorted(self.source_dir.glob("iteration_*.json"))
+
+        if not files:
+            self.status = "error"
+            print(f"Static solver output directory is empty or missing: {self.source_dir}")
+            return
+
         for f in files:
             if self._stop_event.is_set():
                 break
-            
-            dest = os.path.join(output_dir, os.path.basename(f))
+
+            dest = output_path / f.name
+            temporary_dest = dest.with_suffix(f"{dest.suffix}.tmp")
             try:
-                shutil.copy(f, dest)
+                shutil.copyfile(f, temporary_dest)
+                os.replace(temporary_dest, dest)
             except Exception as e:
-                print(f"Error copying {f}: {e}")
+                if temporary_dest.exists():
+                    temporary_dest.unlink()
+                self.status = "error"
+                print(f"Error copying {f} to {dest}: {e}")
+                return
             time.sleep(self.delay)
-            
+
         self.status = "complete"
         self._stop_event.set()
-
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -46,6 +70,6 @@ class StaticSolver(BaseSolver):
 
     def get_status(self) -> str:
         return self.status
-        
+
     def sync_output(self, output_dir: str) -> None:
         pass

@@ -1,5 +1,6 @@
 import subprocess
 from .base import BaseSolver
+from backend.models.api import SolverParameters
 
 class LocalSolver(BaseSolver):
     def __init__(self, executable="python3 backend/solver/mock_solver.py"):
@@ -7,7 +8,12 @@ class LocalSolver(BaseSolver):
         self.process = None
         self.status = "idle"
 
-    def start(self, tsp_filepath: str, output_dir: str) -> None:
+    def start(
+        self,
+        tsp_filepath: str,
+        output_dir: str,
+        parameters: SolverParameters | None = None,
+    ) -> None:
         cmd = self.executable.split() + ["--input", tsp_filepath, "--output", output_dir]
         try:
             self.process = subprocess.Popen(cmd)

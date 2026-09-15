@@ -21,7 +21,11 @@ app.add_middleware(
 )
 
 def run_solver_background(request: RunRequest):
-    solver_manager.start_run(request.points, solver_type=request.solver_type)
+    solver_manager.start_run(
+        request.points,
+        solver_type=request.solver_type,
+        parameters=request.parameters,
+    )
 
 @app.get("/")
 async def pong():

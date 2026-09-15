@@ -5,12 +5,14 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --output=pga-tsp.out
-#SBATCH --gpus-per-task=1
-#SBATCH --gres=gpu:1
+#SBATCH --gpus-per-task=PLACEHOLDER.gpus
+#SBATCH --gres=gpu:PLACEHOLDER.gpus
 
 module load OpenMPI/4.1.4-NVHPC-22.7-CUDA-11.7.0
 
 srun --mpi=pmix \
-../pga-tsp --fine --global --islands 32 --population 100 \
---iterations 250 --migrations 100 --superemigration-period 10 --stalled-iterations 50 --stalled-migrations 20 \
---crossover 0.15 --mutation 0.15 --elitism --history history/iteration_ PLACEHOLDER.tsp
+../pga-tsp --fine --global --islands PLACEHOLDER.islands --population PLACEHOLDER.population \
+--iterations PLACEHOLDER.iterations --migrations PLACEHOLDER.migrations --superemigration-period PLACEHOLDER.superemigration_period \
+--stalled-iterations PLACEHOLDER.stalled_iterations --stalled-migrations PLACEHOLDER.stalled_migrations \
+--crossover PLACEHOLDER.crossover --mutation PLACEHOLDER.mutation PLACEHOLDER.elitism \
+--history history/iteration_ PLACEHOLDER.tsp

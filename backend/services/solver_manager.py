@@ -1,10 +1,11 @@
 import os
 import glob
 import json
+import math
 from typing import Dict, List, Optional
 from backend.solver import get_solver, BaseSolver
 from backend.core.config import settings
-from backend.models.api import Point
+from backend.models.api import Point, SolverParameters
 
 class SolverManager:
     def __init__(self):
@@ -35,35 +36,44 @@ class SolverManager:
             except:
                 pass
 
-    def start_run(self, points: List[Point], solver_type: str = "mock"):
+    def start_run(
+        self,
+        points: List[Point],
+        solver_type: str = "mock",
+        parameters: SolverParameters | None = None,
+    ):
         # Re-initialize solver if requested type differs or just re-initialize every run to be safe
         if solver_type:
             self.solver = get_solver(solver_type)
 
-        lat_min = min(map(lambda p: p.lat, points))
-        lat_max = max(map(lambda p: p.lat, points))
-        lng_min = min(map(lambda p: p.lng, points))
-        lng_max = max(map(lambda p: p.lng, points))
-
-        self.kilo_scale = solver_type == "mock" or lat_max - lat_min > 60.0 or lng_max - lng_min > 120.0
-        
         tsp_filepath = os.path.join(settings.TSP_INPUT_DIR, "problem.tsp")
         self._generate_tsp_file(points, tsp_filepath)
         
-        self.solver.start(tsp_filepath, settings.SOLVER_OUTPUT_DIR)
+        if parameters is None:
+            parameters = SolverParameters()
+        self.solver.start(tsp_filepath, settings.SOLVER_OUTPUT_DIR, parameters)
         
     def _generate_tsp_file(self, points: List[Point], filepath: str):
+        # TSPLIB's EUC_2D solver metric is unitless, so project geographic
+        # coordinates to a local Cartesian coordinate system measured in km.
+        reference_lat = math.radians(sum(point.lat for point in points) / len(points))
+        earth_radius_km = 6371.0088
+        coordinates = [
+            (
+                earth_radius_km * math.radians(point.lng) * math.cos(reference_lat),
+                earth_radius_km * math.radians(point.lat),
+            )
+            for point in points
+        ]
+
         with open(filepath, 'w') as f:
             f.write("NAME: custom_tsp\n")
             f.write("TYPE: TSP\n")
             f.write(f"DIMENSION: {len(points)}\n")
-            if self.kilo_scale:
-                f.write("EDGE_WEIGHT_TYPE: GEOM_KM\n")
-            else:
-                f.write("EDGE_WEIGHT_TYPE: GEOM\n")
+            f.write("EDGE_WEIGHT_TYPE: EUC_2D\n")
             f.write("NODE_COORD_SECTION\n")
-            for i, p in enumerate(points):
-                f.write(f"{i+1} {p.lat} {p.lng}\n")
+            for i, (x, y) in enumerate(coordinates):
+                f.write(f"{i + 1} {x:.12f} {y:.12f}\n")
             f.write("EOF\n")
 
     def get_state(self) -> Dict:
@@ -116,9 +126,9 @@ class SolverManager:
                     # fallback to monotonic counter if missing
                     iter_num = len(self.distance_history) + 1
 
+                # Solver coordinates are projected to km, so its objective is
+                # already in km and must not be divided again.
                 best_dist = data.get('best_distance', 0.0)
-                if not self.kilo_scale:
-                    best_dist = best_dist / 1000.0
                 path_1based = data.get('best_path', [])
                 
                 self.distance_history.append({"iteration": iter_num, "distance": best_dist})

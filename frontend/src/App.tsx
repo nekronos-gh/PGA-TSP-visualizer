@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import MapComponent from './components/MapComponent';
 import ControlPanel from './components/ControlPanel';
 import StatsPanel from './components/StatsPanel';
+import SolverSettings from './components/SolverSettings';
+import type { SolverParameters } from './components/SolverSettings';
 import axios from 'axios';
+import { Lock, Settings } from 'lucide-react';
 
 // Define types
 interface Point {
@@ -44,6 +47,20 @@ const INITIAL_STATE: StateData = {
     population_heatmap: []
 };
 
+const DEFAULT_SOLVER_PARAMETERS: SolverParameters = {
+    islands: 32,
+    population: 100,
+    iterations: 250,
+    migrations: 100,
+    crossover: 0.15,
+    mutation: 0.15,
+    elitism: true,
+    stalled_iterations: 50,
+    stalled_migrations: 20,
+    superemigration_period: 10,
+    gpus: 1,
+};
+
 function App() {
     const [points, setPoints] = useState<Point[]>([]);
     const [mode, setMode] = useState<'custom' | 'preset'>('custom');
@@ -52,6 +69,8 @@ function App() {
     const [state, setState] = useState<StateData>(INITIAL_STATE);
     
     const [solverType, setSolverType] = useState<string>('mock');
+    const [solverParameters, setSolverParameters] = useState<SolverParameters>(DEFAULT_SOLVER_PARAMETERS);
+    const [settingsOpen, setSettingsOpen] = useState(false);
 
     const pollingRef = useRef<boolean>(false);
 
@@ -77,7 +96,11 @@ function App() {
             } catch (e) {
                console.warn("Backend not reachable, but proceeding for UI demo");
             }
-            await axios.post(`${API_URL}/run`, { points, solver_type: solverType });
+            await axios.post(`${API_URL}/run`, {
+                points,
+                solver_type: solverType,
+                parameters: solverParameters,
+            });
             setStatus('running');
             pollingRef.current = true;
             fetchState();
@@ -126,6 +149,8 @@ function App() {
         }
     };
 
+    const isRunning = status === 'running' || status === 'starting' || status === 'pending' || status === 'stopping';
+
     useEffect(() => {
         // Reset state when changing mode or preset
         setState(INITIAL_STATE);
@@ -146,6 +171,26 @@ function App() {
                 <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse shadow-[0_0_10px_#0ea5e9]"></div>
                     <h1 className="text-xl font-mono tracking-widest text-primary-400 font-bold">DRONE LOGISTICS</h1>
+                </div>
+                <div className="relative pointer-events-auto">
+                    <button
+                        type="button"
+                        onClick={() => setSettingsOpen(!settingsOpen)}
+                        disabled={isRunning}
+                        title={isRunning ? 'Settings locked while running' : 'Solver settings'}
+                        aria-label={isRunning ? 'Settings locked while running' : 'Open solver settings'}
+                        className="rounded-lg border border-slate-700 bg-slate-800/80 p-2 text-slate-300 transition-colors hover:border-primary-500 hover:text-primary-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {isRunning ? <Lock size={20} /> : <Settings size={20} />}
+                    </button>
+                    {settingsOpen && (
+                        <SolverSettings
+                            parameters={solverParameters}
+                            onChange={setSolverParameters}
+                            onClose={() => setSettingsOpen(false)}
+                            disabled={isRunning}
+                        />
+                    )}
                 </div>
             </header>
             
