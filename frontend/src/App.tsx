@@ -5,7 +5,7 @@ import StatsPanel from './components/StatsPanel';
 import SolverSettings from './components/SolverSettings';
 import type { SolverParameters } from './components/SolverSettings';
 import axios from 'axios';
-import { Lock, Settings } from 'lucide-react';
+import { Activity, Lock, Settings } from 'lucide-react';
 
 // Define types
 interface Point {
@@ -71,6 +71,7 @@ function App() {
     const [solverType, setSolverType] = useState<string>('mock');
     const [solverParameters, setSolverParameters] = useState<SolverParameters>(DEFAULT_SOLVER_PARAMETERS);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [controlPanelExpanded, setControlPanelExpanded] = useState(true);
 
     const pollingRef = useRef<boolean>(false);
 
@@ -158,6 +159,7 @@ function App() {
 
     const handleRun = async () => {
         try {
+            setControlPanelExpanded(false);
             setStatus('starting');
             try {
                 await axios.get(`${API_URL}/`);
@@ -183,10 +185,16 @@ function App() {
     return (
         <div className="relative h-screen w-screen overflow-hidden bg-slate-900 text-slate-200">
             {/* Header Overlay */}
-            <header className="absolute top-0 left-0 w-full z-20 bg-slate-900/80 backdrop-blur-md border-b border-slate-700 px-6 py-4 flex justify-between items-center pointer-events-none">
-                <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse shadow-[0_0_10px_#0ea5e9]"></div>
-                    <h1 className="text-xl font-mono tracking-widest text-primary-400 font-bold">DRONE LOGISTICS</h1>
+            <header className="absolute top-0 left-0 z-20 flex w-full items-center justify-between border-b border-slate-700/70 bg-slate-900/75 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4 pointer-events-none">
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary-400/30 bg-primary-500/10 shadow-[0_0_24px_rgba(14,165,233,0.16)]">
+                        <Activity size={17} className="text-primary-400" strokeWidth={2.5} />
+                        <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary-400 shadow-[0_0_10px_#38bdf8]" />
+                    </div>
+                    <div className="min-w-0">
+                        <h1 className="truncate text-sm font-bold tracking-[0.18em] text-primary-300 sm:text-base">DRONE LOGISTICS</h1>
+                        <p className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500 sm:block">Route optimization console</p>
+                    </div>
                 </div>
                 <div className="relative pointer-events-auto">
                     <button
@@ -195,7 +203,7 @@ function App() {
                         disabled={isRunning}
                         title={isRunning ? 'Settings locked while running' : 'Solver settings'}
                         aria-label={isRunning ? 'Settings locked while running' : 'Open solver settings'}
-                        className="rounded-lg border border-slate-700 bg-slate-800/80 p-2 text-slate-300 transition-colors hover:border-primary-500 hover:text-primary-400 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700/80 bg-slate-800/70 text-slate-300 shadow-lg shadow-slate-950/10 transition-[border-color,background-color,color,transform] duration-200 hover:-translate-y-0.5 hover:border-primary-400/70 hover:bg-primary-500/10 hover:text-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                     >
                         {isRunning ? <Lock size={20} /> : <Settings size={20} />}
                     </button>
@@ -236,7 +244,7 @@ function App() {
                 {/* Right Area Overlaying Map */}
                 <div className="relative flex-grow h-full">
                     {/* Control Panel (Bottom Center of Map Area) */}
-                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto">
+                    <div className="absolute bottom-4 left-3 right-3 pointer-events-auto sm:bottom-8 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
                         <ControlPanel 
                             mode={mode} 
                             setMode={handleModeChange} 
@@ -249,6 +257,8 @@ function App() {
                             onPresetChange={handlePresetChange}
                             solverType={solverType}
                             onSolverTypeChange={setSolverType}
+                            isExpanded={controlPanelExpanded}
+                            onToggle={() => setControlPanelExpanded((expanded) => !expanded)}
                         />
                     </div>
                 </div>
