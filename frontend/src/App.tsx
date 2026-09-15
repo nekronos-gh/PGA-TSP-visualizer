@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import MapComponent from './components/MapComponent';
 import ControlPanel from './components/ControlPanel';
 import StatsPanel from './components/StatsPanel';
@@ -74,43 +74,21 @@ function App() {
 
     const pollingRef = useRef<boolean>(false);
 
-    const handleMapClick = (lat: number, lng: number) => {
+    const handleMapClick = useCallback((lat: number, lng: number) => {
+        if (mode !== 'custom') {
+            return;
+        }
+
+        setPoints((previous) => [...previous, { id: previous.length + 1, lat, lng }]);
+    }, [mode]);
+
+    const handleMarkerClick = useCallback((id: number) => {
         if (mode === 'custom') {
-            const newPoint = { id: points.length + 1, lat, lng };
-            setPoints([...points, newPoint]);
+            setPoints((previous) => previous.filter((point) => point.id !== id));
         }
-    };
+    }, [mode]);
 
-    const handleMarkerClick = (id: number) => {
-        if (mode === 'custom') {
-            setPoints(points.filter(p => p.id !== id));
-        }
-    };
-
-    const handleRun = async () => {
-        try {
-            setStatus('starting');
-            // Check if server is reachable first
-            try {
-                await axios.get(`${API_URL}/`);
-            } catch (e) {
-               console.warn("Backend not reachable, but proceeding for UI demo");
-            }
-            await axios.post(`${API_URL}/run`, {
-                points,
-                solver_type: solverType,
-                parameters: solverParameters,
-            });
-            setStatus('running');
-            pollingRef.current = true;
-            fetchState();
-        } catch (error) {
-            console.error('Error starting run:', error);
-            setStatus('error');
-        }
-    };
-
-    const handleReset = async () => {
+    const handleReset = useCallback(async () => {
         if (mode === 'custom') {
             setPoints([]);
         }
@@ -121,48 +99,86 @@ function App() {
             setStatus('idle');
         }
         setState(INITIAL_STATE);
-    };
+    }, [mode]);
 
-    const loadPreset = (presetName: string) => {
+    const loadPreset = useCallback((presetName: string) => {
         const presetPoints = availablePresets[presetName];
         if (presetPoints) {
             setPoints(presetPoints);
-            // Mode is already 'preset' if triggered by useEffect or setMode
         }
-    };
+    }, []);
 
-    const fetchState = async () => {
-        try {
-            while (pollingRef.current) {
+    const handleModeChange = useCallback((nextMode: 'custom' | 'preset') => {
+        setMode(nextMode);
+        setState(INITIAL_STATE);
+        setStatus('idle');
+        pollingRef.current = false;
+
+        if (nextMode === 'preset') {
+            loadPreset(selectedPreset);
+            return;
+        }
+
+        setPoints([]);
+    }, [loadPreset, selectedPreset]);
+
+    const handlePresetChange = useCallback((presetName: string) => {
+        setSelectedPreset(presetName);
+        setState(INITIAL_STATE);
+        setStatus('idle');
+        pollingRef.current = false;
+        loadPreset(presetName);
+    }, [loadPreset]);
+
+    const fetchState = useCallback(async () => {
+        const pollState = async () => {
+            try {
                 const response = await axios.get<StateData>(`${API_URL}/state`);
                 setState(response.data);
                 setStatus(response.data.status);
+
                 if (response.data.status === 'processed' || response.data.status === 'error') {
                     pollingRef.current = false;
                     return;
                 }
-                await new Promise(resolve => setTimeout(resolve, 500));
+
+                if (pollingRef.current) {
+                    window.setTimeout(() => {
+                        void pollState();
+                    }, 220);
+                }
+            } catch (error) {
+                console.error('Error fetching state:', error);
+                void handleReset();
             }
+        };
+
+        await pollState();
+    }, [handleReset]);
+
+    const handleRun = async () => {
+        try {
+            setStatus('starting');
+            try {
+                await axios.get(`${API_URL}/`);
+            } catch {
+                console.warn('Backend not reachable, but proceeding for UI demo');
+            }
+            await axios.post(`${API_URL}/run`, {
+                points,
+                solver_type: solverType,
+                parameters: solverParameters,
+            });
+            setStatus('running');
+            pollingRef.current = true;
+            void fetchState();
         } catch (error) {
-            console.error('Error fetching state:', error);
-            handleReset();
+            console.error('Error starting run:', error);
+            setStatus('error');
         }
     };
 
     const isRunning = status === 'running' || status === 'starting' || status === 'pending' || status === 'stopping';
-
-    useEffect(() => {
-        // Reset state when changing mode or preset
-        setState(INITIAL_STATE);
-        setStatus('idle');
-        pollingRef.current = false; 
-
-        if (mode === 'preset') {
-            loadPreset(selectedPreset);
-        } else if (mode === 'custom') {
-            setPoints([]);
-        }
-    }, [mode, selectedPreset]);
 
     return (
         <div className="relative h-screen w-screen overflow-hidden bg-slate-900 text-slate-200">
@@ -223,14 +239,14 @@ function App() {
                     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto">
                         <ControlPanel 
                             mode={mode} 
-                            setMode={setMode} 
+                            setMode={handleModeChange} 
                             pointsCount={points.length} 
                             status={status}
                             onRun={handleRun}
                             onReset={handleReset}
                             presets={Object.keys(availablePresets)}
                             selectedPreset={selectedPreset}
-                            onPresetChange={setSelectedPreset}
+                            onPresetChange={handlePresetChange}
                             solverType={solverType}
                             onSolverTypeChange={setSolverType}
                         />

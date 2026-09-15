@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { useState, useEffect } from 'react';
+import { memo, useMemo, useEffect } from 'react';
 
 const CARTO_API_KEY = import.meta.env.VITE_CARTO_BASEMAPS_API_KEY;
 
@@ -76,74 +76,86 @@ function RecenterAutomatically({ points, mode }: { points: Point[]; mode: 'custo
     return null;
 }
 
-export default function MapComponent({ points, onMapClick, onMarkerClick, path, mode }: MapComponentProps) {
-    const [flightPath, setFlightPath] = useState<[number, number][]>([]);
+const RouteOverlay = memo(function RouteOverlay({ flightPath }: { flightPath: [number, number][] }) {
+    if (flightPath.length === 0) {
+        return null;
+    }
 
-    useEffect(() => {
+    return (
+        <Polyline
+            positions={flightPath}
+            smoothFactor={1}
+            pathOptions={{
+                color: '#38bdf8',
+                weight: 2,
+                opacity: 0.8,
+                dashArray: '5, 10',
+                lineCap: 'round'
+            }}
+        />
+    );
+});
+
+const MapMarkers = memo(function MapMarkers({ points, onMarkerClick }: { points: Point[]; onMarkerClick: (id: number) => void }) {
+    return (
+        <>
+            {points.map((point, index) => (
+                <Marker
+                    key={point.id}
+                    position={[point.lat, point.lng]}
+                    icon={index === 0 ? DepotIcon : TargetIcon}
+                    eventHandlers={{
+                        click: () => onMarkerClick(point.id),
+                    }}
+                >
+                    <Popup className="custom-popup">
+                        <div className="font-mono text-xs">
+                            <strong>{index === 0 ? 'DEPOT' : `TARGET-${point.id}`}</strong><br />
+                            {point.lat.toFixed(4)}, {point.lng.toFixed(4)}
+                        </div>
+                    </Popup>
+                </Marker>
+            ))}
+        </>
+    );
+});
+
+export default function MapComponent({ points, onMapClick, onMarkerClick, path, mode }: MapComponentProps) {
+    const flightPath = useMemo<[number, number][]>(() => {
         if (path.length < 2) {
-            setFlightPath([]);
-            return;
+            return [];
         }
 
-        const waypoints = path.map(idx => points[idx]).filter(Boolean);
-        if (waypoints.length < 2) return;
+        const waypoints = path.map((index) => points[index]).filter(Boolean);
+        if (waypoints.length < 2) {
+            return [];
+        }
 
-        // Close loop
-        const waypointsWithLoop = [...waypoints, waypoints[0]];
-        
-        // Direct flight paths (Straight Lines)
-        setFlightPath(waypointsWithLoop.map(p => [p.lat, p.lng]));
-        
+        return [...waypoints, waypoints[0]].map((point) => [point.lat, point.lng] as [number, number]);
     }, [path, points]);
 
     return (
         <div className="h-full w-full bg-slate-900">
-            <MapContainer 
-                center={[52.52, 13.405]} 
-                zoom={13} 
-                scrollWheelZoom={true} 
+            <MapContainer
+                center={[52.52, 13.405]}
+                zoom={13}
+                scrollWheelZoom={true}
                 className="h-full w-full z-0"
-                zoomControl={false} // Cleaner look
+                zoomControl={false}
+                preferCanvas
+                worldCopyJump
             >
-                {/* CartoDB Dark Matter Tiles */}
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
                     url={'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=' + CARTO_API_KEY}
+                    updateWhenIdle
+                    keepBuffer={4}
                 />
-                
+
                 <LocationMarker onMapClick={onMapClick} mode={mode} />
                 <RecenterAutomatically points={points} mode={mode} />
-                
-                {points.map((p, idx) => (
-                    <Marker
-                        key={p.id}
-                        position={[p.lat, p.lng]}
-                        icon={idx === 0 ? DepotIcon : TargetIcon}
-                        eventHandlers={{
-                            click: () => onMarkerClick(p.id),
-                        }}
-                    >
-                        <Popup className="custom-popup">
-                            <div className="font-mono text-xs">
-                                <strong>{idx === 0 ? "DEPOT" : `TARGET-${p.id}`}</strong><br/>
-                                {p.lat.toFixed(4)}, {p.lng.toFixed(4)}
-                            </div>
-                        </Popup>
-                    </Marker>
-                ))}
-                
-                {flightPath.length > 0 && (
-                    <Polyline 
-                        positions={flightPath} 
-                        pathOptions={{ 
-                            color: '#38bdf8', // primary-400
-                            weight: 2, 
-                            opacity: 0.8,
-                            dashArray: '5, 10',
-                            lineCap: 'round'
-                        }} 
-                    />
-                )}
+                <MapMarkers points={points} onMarkerClick={onMarkerClick} />
+                <RouteOverlay flightPath={flightPath} />
             </MapContainer>
         </div>
     );
