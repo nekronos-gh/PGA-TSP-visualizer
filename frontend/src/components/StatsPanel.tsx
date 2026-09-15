@@ -70,7 +70,7 @@ export default memo(function StatsPanel({ iteration, bestDistance, distanceHisto
     }), [distanceHistory]);
 
     return (
-        <div className="flex flex-col h-full bg-slate-900/95 backdrop-blur-sm border-r border-slate-700 w-96 px-6 pb-6 pt-20 shadow-2xl overflow-hidden">
+        <div className="flex h-full w-[min(19rem,88vw)] flex-col overflow-hidden border-r border-slate-700/80 bg-slate-900/95 px-4 pb-4 pt-20 shadow-2xl backdrop-blur-xl sm:w-96 sm:px-6 sm:pb-6">
             <div className="mb-6 flex-none">
                 <h2 className="text-xs font-mono text-slate-500 mb-2 uppercase tracking-widest">Flight Metrics</h2>
                 <div className="grid grid-cols-[2fr_1fr] gap-4">
