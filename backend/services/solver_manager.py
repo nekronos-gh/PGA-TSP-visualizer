@@ -18,6 +18,8 @@ class SolverManager:
         self.processed_files = set()
         self.output_synced = False
         self.all_files_processed = False
+        self.solver_type = "mock"
+        self.points: List[Point] = []
 
     def reset_state(self):
         self.solver.stop()
@@ -45,6 +47,8 @@ class SolverManager:
         # Re-initialize solver if requested type differs or just re-initialize every run to be safe
         if solver_type:
             self.solver = get_solver(solver_type)
+        self.solver_type = solver_type or "mock"
+        self.points = points
 
         tsp_filepath = os.path.join(settings.TSP_INPUT_DIR, "problem.tsp")
         self._generate_tsp_file(points, tsp_filepath)
@@ -106,6 +110,30 @@ class SolverManager:
             "population_heatmap": self.latest_heatmap
         }
 
+    def _route_distance_km(self, path_1based: List[int]) -> float:
+        """Calculate a static solver route using geographic distances."""
+        if len(path_1based) < 2:
+            return 0.0
+
+        route = [self.points[index - 1] for index in path_1based]
+        earth_radius_km = 6371.0088
+        distance = 0.0
+
+        for start, end in zip(route, route[1:] + route[:1]):
+            start_lat = math.radians(start.lat)
+            end_lat = math.radians(end.lat)
+            delta_lat = end_lat - start_lat
+            delta_lng = math.radians(end.lng - start.lng)
+            haversine = (
+                math.sin(delta_lat / 2) ** 2
+                + math.cos(start_lat)
+                * math.cos(end_lat)
+                * math.sin(delta_lng / 2) ** 2
+            )
+            distance += 2 * earth_radius_km * math.asin(math.sqrt(haversine))
+
+        return distance
+
     def _process_new_outputs(self):
         all_files = glob.glob(os.path.join(settings.SOLVER_OUTPUT_DIR, "iteration_*.json"))
         all_files.sort()
@@ -126,10 +154,10 @@ class SolverManager:
                     # fallback to monotonic counter if missing
                     iter_num = len(self.distance_history) + 1
 
-                # Solver coordinates are projected to km, so its objective is
-                # already in km and must not be divided again.
                 best_dist = data.get('best_distance', 0.0)
                 path_1based = data.get('best_path', [])
+                if self.solver_type == "static":
+                    best_dist = self._route_distance_km(path_1based)
                 
                 self.distance_history.append({"iteration": iter_num, "distance": best_dist})
                 
